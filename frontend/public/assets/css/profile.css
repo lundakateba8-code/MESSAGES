@@ -1,0 +1,21 @@
+.profile-body { padding: 20px; }
+.profile-header { background: white; border-radius: 15px; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.user-info { display: flex; align-items: center; gap: 1rem; }
+.user-avatar-small { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea; }
+.profile-container { max-width: 800px; margin: 0 auto; }
+.profile-card { background: white; border-radius: 20px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.profile-section { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #e2e8f0; }
+.profile-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.section-title { font-size: 1.5rem; margin-bottom: 1.5rem; }
+.profile-image-container { text-align: center; margin-bottom: 1rem; }
+.profile-image { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 5px solid #667eea; }
+.message-display { background: #f7fafc; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; min-height: 80px; }
+.message-textarea { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; resize: vertical; }
+.char-counter { text-align: right; color: #718096; font-size: 0.9rem; }
+.audio-messages-list { margin-top: 1.5rem; }
+.audio-message-item { background: #f7fafc; padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem; }
+.audio-message-info { flex: 1; }
+.audio-message-actions { display: flex; gap: 0.5rem; }
+.icon-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; }
+.icon-btn.danger:hover { color: #f56565; }
+.empty-state { text-align: center; padding: 2rem; color: #718096; }

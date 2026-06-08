@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Profil</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/profile.css">
+    <link rel="stylesheet" href="assets/css/audio-player.css">
+</head>
+<body class="profile-body">
+    <header class="profile-header">
+        <div class="user-info">
+            <img id="headerAvatar" class="user-avatar-small" src="assets/images/default-avatar.png" alt="Avatar">
+            <span id="headerUsername">Chargement...</span>
+        </div>
+        <button class="btn btn-danger" onclick="Auth.logout()">🚪 Déconnexion</button>
+    </header>
+
+    <div class="profile-container">
+        <!-- Photo -->
+        <div class="profile-card">
+            <div class="profile-section">
+                <h2 class="section-title">📷 Photo de profil</h2>
+                <div class="profile-image-container">
+                    <img id="profileImage" class="profile-image" src="assets/images/default-avatar.png" alt="Photo">
+                </div>
+                <input type="file" id="imageUpload" accept="image/*" style="display:none" onchange="changeImage(event)">
+                <button class="btn btn-primary" onclick="document.getElementById('imageUpload').click()">Changer la photo</button>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <div class="profile-card">
+            <div class="profile-section">
+                <h2 class="section-title">✏️ Message texte</h2>
+                <div class="message-display" id="messageDisplay">Chargement...</div>
+                <textarea id="messageInput" class="message-textarea" placeholder="Votre message" maxlength="500"></textarea>
+                <div class="char-counter"><span id="charCount">0</span>/500</div>
+                <button class="btn btn-primary" onclick="updateMessage()">Mettre à jour</button>
+            </div>
+        </div>
+
+        <!-- Audio -->
+        <div class="profile-card">
+            <div class="profile-section">
+                <h2 class="section-title">🎤 Message vocal</h2>
+                <div class="audio-recorder-container">
+                    <div class="recorder-controls">
+                        <button class="record-btn" id="recordBtn">🎤</button>
+                        <div class="timer-display" id="timerDisplay">0:00</div>
+                    </div>
+                    <div class="recorder-actions" id="recorderActions" style="display:none">
+                        <button class="btn btn-success" id="saveBtn">💾 Sauvegarder</button>
+                        <button class="btn btn-secondary" id="cancelBtn">❌ Annuler</button>
+                    </div>
+                </div>
+                <div class="audio-messages-list">
+                    <h3>Mes messages vocaux</h3>
+                    <div id="audioMessagesContainer"><div class="empty-state">Aucun message</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/helpers.js"></script>
+    <script src="assets/js/audio-recorder.js"></script>
+    <script src="assets/js/audio-player.js"></script>
+    <script>
+        let currentUser = null;
+        let audioRecorder = new AudioRecorder();
+        let currentRecording = null;
+
+        audioRecorder.onStateChange = (state) => {
+            if (state.recording) {
+                document.getElementById('recordingIndicator') && (document.getElementById('recordingIndicator').style.display = 'flex');
+            } else if (state.blob) {
+                currentRecording = state;
+                document.getElementById('recorderActions').style.display = 'flex';
+            } else if (state.cancelled) {
+                resetRecorder();
+            }
+        };
+        audioRecorder.onTimerUpdate = (duration) => {
+            document.getElementById('timerDisplay').textContent = Format.time(duration);
+        };
+
+        document.getElementById('recordBtn').addEventListener('click', async () => {
+            if (audioRecorder.isRecording) {
+                audioRecorder.stopRecording();
+            } else {
+                await audioRecorder.startRecording();
+            }
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            if (!currentRecording) return;
+            const formData = new FormData();
+            formData.append('audio', currentRecording.blob, 'message.webm');
+            try {
+                await API.upload('/audio/upload', formData);
+                alert('Message vocal sauvegardé !');
+                resetRecorder();
+                loadAudioMessages();
+            } catch(e) { alert('Erreur sauvegarde'); }
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            audioRecorder.cancelRecording();
+            resetRecorder();
+        });
+
+        function resetRecorder() {
+            currentRecording = null;
+            document.getElementById('timerDisplay').textContent = '0:00';
+            document.getElementById('recorderActions').style.display = 'none';
+        }
+
+        async function loadAudioMessages() {
+            try {
+                const data = await API.get('/audio/messages');
+                const container = document.getElementById('audioMessagesContainer');
+                if (data.messages.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Aucun message vocal</div>';
+                    return;
+                }
+                container.innerHTML = data.messages.map(msg => `
+                    <div class="audio-message-item">
+                        <div class="audio-message-info">
+                            <strong>${msg.title}</strong>
+                            <div>${Format.date(msg.createdAt)}</div>
+                            <div id="player-${msg._id}"></div>
+                        </div>
+                        <div class="audio-message-actions">
+                            <button class="icon-btn" onclick="playAudio('${msg._id}', '${msg.audioFile.url}')">▶️</button>
+                            <button class="icon-btn danger" onclick="deleteAudio('${msg._id}')">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        function playAudio(id, url) {
+            const fullUrl = `${CONFIG.API_URL.replace('/api','')}${url}`;
+            const playerContainer = document.getElementById(`player-${id}`);
+            playerContainer.innerHTML = '';
+            const player = new AudioPlayer(`player-${id}`);
+            player.loadAudio(fullUrl);
+        }
+
+        async function deleteAudio(id) {
+            if (!confirm('Supprimer ce message ?')) return;
+            await API.delete(`/audio/${id}`);
+            loadAudioMessages();
+        }
+
+        async function changeImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('photo', file);
+            try {
+                const res = await API.upload('/profile', formData);
+                currentUser.profile.photo = res.profile.photo;
+                Auth.setUser(currentUser);
+                const photoUrl = `${CONFIG.API_URL.replace('/api','')}/uploads/profiles/${res.profile.photo.url}`;
+                document.getElementById('profileImage').src = photoUrl;
+                document.getElementById('headerAvatar').src = photoUrl;
+            } catch(e) { alert('Erreur photo'); }
+        }
+
+        async function updateMessage() {
+            const message = document.getElementById('messageInput').value.trim();
+            if (!message) return;
+            try {
+                const res = await API.put('/profile', { message });
+                currentUser.profile.message = res.profile.message;
+                document.getElementById('messageDisplay').textContent = message;
+                document.getElementById('messageInput').value = '';
+            } catch(e) { alert('Erreur message'); }
+        }
+
+        (async function init() {
+            if (!Auth.isAuthenticated()) { window.location.href = 'auth.html'; return; }
+            try {
+                const res = await API.get('/auth/me');
+                currentUser = res.user;
+                document.getElementById('headerUsername').textContent = currentUser.username;
+                if (currentUser.profile.photo && currentUser.profile.photo.url !== 'default-avatar.png') {
+                    const url = `${CONFIG.API_URL.replace('/api','')}/uploads/profiles/${currentUser.profile.photo.url}`;
+                    document.getElementById('profileImage').src = url;
+                    document.getElementById('headerAvatar').src = url;
+                }
+                document.getElementById('messageDisplay').textContent = currentUser.profile.message.text;
+                loadAudioMessages();
+            } catch(e) { Auth.logout(); }
+        })();
+    </script>
+</body>
+</html>
